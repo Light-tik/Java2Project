@@ -1,0 +1,4 @@
+sea 2
+shells 1
+ship 1
+water 2
