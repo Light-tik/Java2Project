@@ -1,3 +1,0 @@
-sea	1
-shells	1
-water	1

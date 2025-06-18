@@ -1,2 +1,0 @@
-sea	1
-water	1

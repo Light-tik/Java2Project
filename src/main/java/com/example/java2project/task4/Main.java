@@ -1,10 +1,12 @@
 package com.example.java2project.task4;
 
+import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
 
+@Slf4j
 public class Main {
     public static void main(String[] args) throws InterruptedException {
         List<String> fileNames = List.of("input1.txt", "input2.txt", "input3.txt");
@@ -17,7 +19,7 @@ public class Main {
             try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(fileNames.get(i)))) {
                 writer.write(contents.get(i));
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error(e.getMessage());
                 return;
             }
         }
@@ -39,7 +41,7 @@ public class Main {
             try {
                 Files.readAllLines(resultFile).forEach(System.out::println);
             } catch (IOException e) {
-                System.out.println("Не удалось прочитать " + resultFile);
+                log.warn("Failed to read {}", resultFile);
             }
             System.out.println();
         }

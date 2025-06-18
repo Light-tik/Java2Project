@@ -1,31 +1,62 @@
 package com.example.java2project.task1;
 
-import java.util.concurrent.Semaphore;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class NumbersPrinter {
 
-    private static final Semaphore evenSemaphore = new Semaphore(1);
-    private static final Semaphore oddSemaphore = new Semaphore(0);
+    private static final Object lock = new Object();
+    private static int num = 0;
+    private static final int MAX = 100;
 
-    public static void main(String[] args) {
-        new Thread(() -> {
-            for (int i = 0; i <= 100; i += 2) {
-                try {
-                    evenSemaphore.acquire();
-                    System.out.println(i);
-                    oddSemaphore.release();
-                } catch (InterruptedException e) {}
+    public static void main(String[] args) throws InterruptedException {
+        Thread evenThread = new Thread(()-> {
+            while (true) {
+                synchronized (lock) {
+                    while (num<= MAX && num % 2 != 0) {
+                        try {
+                            lock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            log.warn(e.getMessage());
+                            return;
+                        }
+                    }
+                    if (num > MAX) {
+                        lock.notify();
+                        break;
+                    }
+                    System.out.println(num++);
+                    lock.notify();
+                }
             }
-        }).start();
+        });
 
-        new Thread(() -> {
-            for (int i = 1; i <= 99; i += 2) {
-                try {
-                    oddSemaphore.acquire();
-                    System.out.println(i);
-                    evenSemaphore.release();
-                } catch (InterruptedException e) {}
+        Thread oddThread = new Thread(()-> {
+            while (true) {
+                synchronized (lock) {
+                    while (num<= MAX && num % 2 == 0) {
+                        try {
+                            lock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            log.warn(e.getMessage());
+                            return;
+                        }
+                    }
+                    if (num > MAX) {
+                        lock.notify();
+                        break;
+                    }
+                    System.out.println(num++);
+                    lock.notify();
+                }
             }
-        }).start();
+        });
+
+        evenThread.start();
+        oddThread.start();
+        evenThread.join();
+        oddThread.join();
     }
 }

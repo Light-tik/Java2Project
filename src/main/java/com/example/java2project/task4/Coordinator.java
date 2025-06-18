@@ -9,4 +9,8 @@ public interface Coordinator {
     void mapTaskDone(String mapFileName, Map<Integer, String> intermediateFiles);
 
     void reduceTaskDone(int reduceId);
+
+    void taskFailed(Task task);
+
+    boolean isFinished();
 }

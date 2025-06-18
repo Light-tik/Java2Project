@@ -2,6 +2,7 @@ package com.example.java2project.task4;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+@Slf4j
 @RequiredArgsConstructor
 public class Worker implements Runnable {
 
@@ -16,17 +18,52 @@ public class Worker implements Runnable {
     @Getter
     private final int id;
 
+    private static final int MAX_RETRIES = 3;
+
     @Override
     public void run() {
         while (true) {
             Task task = coordinator.getTask();
 
-            switch (task.type){
-                case MAP -> handleMap(task);
-                case REDUCE -> handleReduce(task);
+            switch (task.type) {
+                case MAP -> runWithRetries(() -> handleMap(task), task);
+                case REDUCE -> runWithRetries(() -> handleReduce(task), task);
                 case NONE -> {
-                    System.out.println("Worker " + id + " закончил работу");
-                    return;
+                    if (coordinator.isFinished()) {
+                        log.info("Worker {} has finished work", id);
+                        return;
+                    } else {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            log.warn(e.getMessage());
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void runWithRetries(Runnable runnable, Task task){
+        for (int i = 0; i <= MAX_RETRIES; i++) {
+            try {
+                log.info("Worker {} performs {} task : {}", id, task.getType(), task.getId());
+                runnable.run();
+                return;
+            } catch (Exception e) {
+                log.warn("Error executing {} task {} on attempt {}: {}", task.getType(), task.getId(), i, e.getMessage());
+                if (i == MAX_RETRIES) {
+                    log.error("Worker {} failed to complete {} task after {} attempts: {}", id, task.getType(), MAX_RETRIES, task.getId());
+                    coordinator.taskFailed(task);
+                } else {
+                    try {
+                        Thread.sleep(200);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
                 }
             }
         }
@@ -57,9 +94,9 @@ public class Worker implements Runnable {
                 }
             }
             coordinator.mapTaskDone(task.getFileName(), filesCreated);
-            System.out.println("Worker " + getId() + " завершил MAP задачу для файла: " + task.fileName);
+            log.info("Worker {} completed MAP task for file: {}", getId(), task.fileName);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.warn(e.getMessage());
         }
     }
 
@@ -87,9 +124,9 @@ public class Worker implements Runnable {
                 }
             }
             coordinator.reduceTaskDone(task.getReduceId());
-            System.out.println("Worker " + id + " завершил REDUCE задачу #" + task.reduceId);
+            log.info("Worker {} completed REDUCE task № {}", id, task.reduceId);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.warn(e.getMessage());
         }
     }
 
